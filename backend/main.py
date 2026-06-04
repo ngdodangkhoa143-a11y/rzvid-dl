@@ -225,6 +225,45 @@ def get_progress(task_id: str):
             raise HTTPException(status_code=404, detail="Task not found")
         return task
 
+@app.get("/api/debug-cookies")
+def debug_cookies():
+    import os
+    results = {}
+    possible_paths = {
+        "__file__": __file__,
+        "cwd": os.getcwd(),
+        "backend/cookies.txt": os.path.join(os.path.dirname(__file__), "cookies.txt"),
+        "../cookies.txt": os.path.join(os.path.dirname(__file__), "..", "cookies.txt"),
+        "root cookies.txt": os.path.abspath("cookies.txt"),
+        "backend_dir_exists": os.path.exists(os.path.dirname(__file__)),
+        "files_in_backend": os.listdir(os.path.dirname(__file__)) if os.path.exists(os.path.dirname(__file__)) else [],
+        "files_in_cwd": os.listdir(os.getcwd()),
+    }
+    for label, path in possible_paths.items():
+        if isinstance(path, str) and os.path.isabs(path) and os.path.exists(path):
+            results[label] = {
+                "exists": True,
+                "size": os.path.getsize(path),
+                "is_file": os.path.isfile(path),
+                "readable": os.access(path, os.R_OK),
+            }
+            if "cookies.txt" in label:
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        content = f.read(200) # first 200 chars
+                        results[label]["preview"] = content
+                        f.seek(0)
+                        full_content = f.read()
+                        results[label]["has_login_info"] = "LOGIN_INFO" in full_content
+                except Exception as e:
+                    results[label]["read_error"] = str(e)
+        else:
+            results[label] = {
+                "exists": False if isinstance(path, str) else path
+            }
+    return results
+
+
 @app.get("/api/retrieve/{task_id}")
 def retrieve_file(task_id: str):
     """Serves the downloaded file. File cleanup is handled periodically by cleanup_old_files."""
