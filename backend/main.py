@@ -284,7 +284,7 @@ def test_clients():
     import yt_dlp
     from .downloader import get_ydl_opts
     
-    url = "https://www.youtube.com/watch?v=D6rYPVIspLo"
+    url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
     
     class CaptureLogger:
         def __init__(self):
