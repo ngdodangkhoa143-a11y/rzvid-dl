@@ -364,9 +364,11 @@ def download_media(url: str, option_id: str, output_dir: str, progress_hook=None
                         break
                         
             if not downloaded_file or not os.path.exists(downloaded_file):
-                # Search directory
+                # Search directory for the final non-temporary file
                 for filename in os.listdir(output_dir):
                     if filename.startswith(temp_id):
+                        if ".temp" in filename or filename.endswith(".part") or filename.endswith(".ytdl"):
+                            continue
                         downloaded_file = os.path.join(output_dir, filename)
                         break
             
