@@ -228,6 +228,7 @@ def get_progress(task_id: str):
 @app.get("/api/debug-cookies")
 def debug_cookies():
     import os
+    import subprocess
     results = {}
     possible_paths = {
         "__file__": __file__,
@@ -261,6 +262,21 @@ def debug_cookies():
             results[label] = {
                 "exists": False if isinstance(path, str) else path
             }
+            
+    # Try executing Deno
+    deno_path = "/tmp/bin/deno" if os.environ.get("VERCEL") else os.path.abspath(os.path.join(os.path.dirname(__file__), "bin", "deno.exe" if os.name == 'nt' else 'deno'))
+    results["deno_execution"] = {"path": deno_path, "exists": os.path.exists(deno_path)}
+    if os.path.exists(deno_path):
+        try:
+            if not os.name == 'nt':
+                os.chmod(deno_path, 0o755)
+            output = subprocess.check_output([deno_path, "--version"], stderr=subprocess.STDOUT, text=True, timeout=5)
+            results["deno_execution"]["success"] = True
+            results["deno_execution"]["output"] = output
+        except Exception as e:
+            results["deno_execution"]["success"] = False
+            results["deno_execution"]["error"] = str(e)
+            
     return results
 
 @app.get("/api/test-clients")
