@@ -121,8 +121,9 @@ def get_clean_title(title):
 
 def get_ydl_opts(extra_opts=None, url=None):
     """
-    Builds a robust configuration for yt-dlp, applying connection timeouts,
-    limited retries, and browser TLS impersonation to prevent bot blocking.
+    Builds a robust configuration for yt-dlp.
+    For YouTube: uses iOS/mweb player clients to bypass bot detection without cookies.
+    Cookies are used as an optional enhancement if available.
     """
     # Lazily ensure JS runtime is configured for YouTube or local environments
     is_youtube = False
@@ -130,59 +131,54 @@ def get_ydl_opts(extra_opts=None, url=None):
         url_lower = url.lower()
         if "youtube.com" in url_lower or "youtu.be" in url_lower:
             is_youtube = True
-            
+
     if not os.environ.get("VERCEL") or is_youtube:
         ensure_js_runtime()
-        
+
     opts = {
         'quiet': True,
         'no_warnings': True,
-        'socket_timeout': 15,
-        'retries': 3,
-        'fragment_retries': 3,
+        'socket_timeout': 30,
+        'retries': 5,
+        'fragment_retries': 5,
     }
-    
-    # Check for cookies file to bypass bot verification (Sign in to confirm you're not a bot)
+
+    # For YouTube: use iOS + mweb player clients to avoid bot detection without cookies.
+    # These clients are trusted by YouTube and don't require authentication for public videos.
+    if is_youtube:
+        opts['extractor_args'] = {
+            'youtube': {
+                'player_client': ['ios', 'mweb'],
+                'player_skip': ['webpage', 'configs'],
+            }
+        }
+
+    # Cookies as OPTIONAL enhancement (not required if iOS client is used)
     possible_cookie_files = [
         os.path.join(os.path.dirname(__file__), "cookies.txt"),
         os.path.join(os.path.dirname(__file__), "..", "cookies.txt"),
-        os.path.join(os.path.dirname(__file__), "youtube-cookies.txt"),
-        os.path.join(os.path.dirname(__file__), "..", "youtube-cookies.txt"),
     ]
     for cookie_path in possible_cookie_files:
         if os.path.exists(cookie_path):
-            # On Vercel/read-only environments, copy cookies to /tmp so yt-dlp can write/update it without crashing
+            # On Vercel/read-only environments, copy cookies to /tmp first
             if os.environ.get("VERCEL") or not os.access(cookie_path, os.W_OK):
                 import shutil
                 tmp_cookie_path = "/tmp/cookies.txt"
                 try:
                     shutil.copy2(cookie_path, tmp_cookie_path)
                     opts['cookiefile'] = tmp_cookie_path
-                    logger.info(f"Copied read-only cookies file to writable path: {tmp_cookie_path}")
+                    logger.info(f"Using cookies from: {tmp_cookie_path}")
                 except Exception as e:
-                    logger.error(f"Failed to copy cookies file to /tmp: {e}")
-                    opts['cookiefile'] = os.path.abspath(cookie_path)
+                    logger.warning(f"Could not copy cookies, proceeding without: {e}")
             else:
                 opts['cookiefile'] = os.path.abspath(cookie_path)
-                logger.info(f"Using writable cookies file: {cookie_path}")
+                logger.info(f"Using cookies from: {cookie_path}")
             break
 
-
-
-    # Try using Chrome TLS impersonation via curl_cffi to bypass scraper blocklists
-    try:
-        from yt_dlp.networking.impersonate import ImpersonateTarget
-        opts['impersonate'] = ImpersonateTarget.from_str('chrome-110:windows-10')
-    except Exception:
-        # Fallback to standard request headers
-        opts['http_headers'] = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
-        }
-        
     if extra_opts:
         opts.update(extra_opts)
     return opts
+
 
 def get_video_info(url: str):
     """
