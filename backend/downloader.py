@@ -30,11 +30,31 @@ def get_ydl_opts(extra_opts=None):
     opts = {
         'quiet': True,
         'no_warnings': True,
-        'socket_timeout': 10,
-        'retries': 2,
-        'fragment_retries': 2,
+        'socket_timeout': 15,
+        'retries': 3,
+        'fragment_retries': 3,
     }
     
+    # Check for cookies file to bypass bot verification (Sign in to confirm you're not a bot)
+    possible_cookie_files = [
+        os.path.join(os.path.dirname(__file__), "cookies.txt"),
+        os.path.join(os.path.dirname(__file__), "..", "cookies.txt"),
+        os.path.join(os.path.dirname(__file__), "youtube-cookies.txt"),
+        os.path.join(os.path.dirname(__file__), "..", "youtube-cookies.txt"),
+    ]
+    for cookie_path in possible_cookie_files:
+        if os.path.exists(cookie_path):
+            opts['cookiefile'] = os.path.abspath(cookie_path)
+            logger.info(f"Using cookies file for authentication: {cookie_path}")
+            break
+
+    # Optimize extractor args to rotate player clients and avoid simple bot flags
+    opts['extractor_args'] = {
+        'youtube': {
+            'player_client': ['ios', 'web', 'mweb', 'android']
+        }
+    }
+
     # Try using Chrome TLS impersonation via curl_cffi to bypass scraper blocklists
     try:
         from yt_dlp.networking.impersonate import ImpersonateTarget
