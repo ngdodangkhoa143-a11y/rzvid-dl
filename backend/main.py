@@ -13,31 +13,36 @@ from .downloader import get_video_info, download_media, get_clean_title
 
 from contextlib import asynccontextmanager
 
-# Configure file logging
-LOG_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "server.log"))
+# Configure logging: Only use StreamHandler on serverless/Vercel environments to prevent PermissionError
+log_handlers = [logging.StreamHandler()]
+if not os.environ.get("VERCEL"):
+    try:
+        LOG_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "server.log"))
+        log_handlers.append(logging.FileHandler(LOG_FILE, encoding='utf-8'))
+    except Exception as e:
+        print(f"Could not setup FileHandler for logging: {e}")
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_FILE, encoding='utf-8'),
-        logging.StreamHandler()
-    ]
+    handlers=log_handlers
 )
 logger = logging.getLogger("RzVid")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Auto-open default web browser on startup in a separate thread
-    import webbrowser
-    def open_browser():
-        time.sleep(1.5) # Wait for Uvicorn to bind to port 8000
-        try:
-            logger.info("Auto-opening default browser to http://127.0.0.1:8000")
-            webbrowser.open("http://127.0.0.1:8000")
-        except Exception as e:
-            logger.error(f"Failed to auto-open browser: {e}")
-            
-    threading.Thread(target=open_browser, daemon=True).start()
+    # Auto-open default web browser on startup only on local environments
+    if not os.environ.get("VERCEL"):
+        import webbrowser
+        def open_browser():
+            time.sleep(1.5) # Wait for Uvicorn to bind to port 8000
+            try:
+                logger.info("Auto-opening default browser to http://127.0.0.1:8000")
+                webbrowser.open("http://127.0.0.1:8000")
+            except Exception as e:
+                logger.error(f"Failed to auto-open browser: {e}")
+                
+        threading.Thread(target=open_browser, daemon=True).start()
     yield
 
 app = FastAPI(title="RzVid API", version="1.0.0", lifespan=lifespan)
@@ -51,7 +56,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DOWNLOADS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "downloads"))
+if os.environ.get("VERCEL"):
+    DOWNLOADS_DIR = "/tmp/downloads"
+else:
+    DOWNLOADS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "downloads"))
+
+os.makedirs(DOWNLOADS_DIR, exist_ok=True)
 FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
 
 # Global task state
