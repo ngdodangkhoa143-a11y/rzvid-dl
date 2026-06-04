@@ -30,6 +30,7 @@ function App() {
     
     const progressInterval = useRef(null);
     const urlInputRef = useRef(null);
+    const typingIntervalRef = useRef(null);
 
     // Toast helpers
     const addToast = (message, type = 'success') => {
@@ -56,12 +57,46 @@ function App() {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    // Handle clipboard paste
+    // Animate character typing for a pasted URL
+    const animateTyping = (text) => {
+        if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+        let index = 0;
+        setUrl('');
+        typingIntervalRef.current = setInterval(() => {
+            if (index < text.length) {
+                setUrl(text.substring(0, index + 1));
+                index++;
+            } else {
+                clearInterval(typingIntervalRef.current);
+                typingIntervalRef.current = null;
+            }
+        }, 8); // 8ms per char is extremely smooth and fast
+    };
+
+    // Handle normal typing and clear any active animation
+    const handleInputChange = (e) => {
+        if (typingIntervalRef.current) {
+            clearInterval(typingIntervalRef.current);
+            typingIntervalRef.current = null;
+        }
+        setUrl(e.target.value);
+    };
+
+    // Handle paste in the input field
+    const handleInputPaste = (e) => {
+        e.preventDefault();
+        const pastedText = e.clipboardData.getData('text');
+        if (pastedText) {
+            animateTyping(pastedText.trim());
+        }
+    };
+
+    // Handle clipboard paste via button click
     const handlePaste = async () => {
         try {
             const text = await navigator.clipboard.readText();
             if (text) {
-                setUrl(text.trim());
+                animateTyping(text.trim());
                 addToast('Đã dán liên kết từ bộ nhớ tạm!', 'success');
             } else {
                 addToast('Bộ nhớ tạm rỗng!', 'error');
@@ -368,7 +403,8 @@ function App() {
                                             ref={urlInputRef}
                                             type="text" 
                                             value={url}
-                                            onChange={(e) => setUrl(e.target.value)}
+                                            onChange={handleInputChange}
+                                            onPaste={handleInputPaste}
                                             onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
                                             disabled={status === 'analyzing' || status === 'downloading' || status === 'merging'}
                                             className="w-full bg-transparent border-none outline-none py-2.5 text-slate-100 placeholder-slate-500 text-sm focus:ring-0 focus:outline-none" 
