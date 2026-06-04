@@ -44,8 +44,20 @@ def get_ydl_opts(extra_opts=None):
     ]
     for cookie_path in possible_cookie_files:
         if os.path.exists(cookie_path):
-            opts['cookiefile'] = os.path.abspath(cookie_path)
-            logger.info(f"Using cookies file for authentication: {cookie_path}")
+            # On Vercel/read-only environments, copy cookies to /tmp so yt-dlp can write/update it without crashing
+            if os.environ.get("VERCEL") or not os.access(cookie_path, os.W_OK):
+                import shutil
+                tmp_cookie_path = "/tmp/cookies.txt"
+                try:
+                    shutil.copy2(cookie_path, tmp_cookie_path)
+                    opts['cookiefile'] = tmp_cookie_path
+                    logger.info(f"Copied read-only cookies file to writable path: {tmp_cookie_path}")
+                except Exception as e:
+                    logger.error(f"Failed to copy cookies file to /tmp: {e}")
+                    opts['cookiefile'] = os.path.abspath(cookie_path)
+            else:
+                opts['cookiefile'] = os.path.abspath(cookie_path)
+                logger.info(f"Using writable cookies file: {cookie_path}")
             break
 
     # Optimize extractor args to rotate player clients and avoid simple bot flags
