@@ -302,8 +302,9 @@ def test_clients():
     
     # Test cases to run with full logging
     test_cases = [
-        {"name": "ios_with_cookies", "use_cookies": True, "client": ["ios"]},
-        {"name": "ios_no_cookies", "use_cookies": False, "client": ["ios"]},
+        {"name": "android_with_cookies", "use_cookies": True, "client": ["android"]},
+        {"name": "web_with_cookies", "use_cookies": True, "client": ["web"]},
+        {"name": "mweb_with_cookies", "use_cookies": True, "client": ["mweb"]},
     ]
     
     for case in test_cases:
