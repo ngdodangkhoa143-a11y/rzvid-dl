@@ -17,6 +17,102 @@ try:
 except Exception as e:
     logger.error(f"Error initializing static-ffmpeg: {e}")
 
+def ensure_js_runtime():
+    """
+    Ensures that a supported JS runtime (deno, node, qjs, bun) is available in PATH.
+    If none is found globally, looks for a local deno binary in backend/bin.
+    If that is also missing, downloads Deno from GitHub and extracts it.
+    Finally, appends the local bin folder to the process PATH.
+    """
+    import shutil
+    import platform
+    import urllib.request
+    import zipfile
+    
+    # 1. Check if a global JS runtime is already in PATH
+    for runtime in ['deno', 'node', 'qjs', 'bun']:
+        if shutil.which(runtime):
+            logger.info(f"Found global JS runtime: {runtime}")
+            return
+            
+    # 2. Check the local bin directory
+    bin_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "bin"))
+    os.makedirs(bin_dir, exist_ok=True)
+    
+    system = platform.system().lower()
+    is_windows = system == "windows"
+    
+    binary_name = "deno.exe" if is_windows else "deno"
+    local_binary = os.path.join(bin_dir, binary_name)
+    
+    # Add local bin to PATH early so subsequent checks find it
+    if bin_dir not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH", "")
+        
+    if os.path.exists(local_binary):
+        logger.info(f"Found local JS runtime at: {local_binary}")
+        return
+
+    # On Vercel, check if we need to redirect to writable /tmp
+    if os.environ.get("VERCEL"):
+        # Vercel should have Node.js globally, so we shouldn't hit this.
+        # But if we do, use /tmp since the filesystem is read-only.
+        bin_dir = "/tmp/bin"
+        os.makedirs(bin_dir, exist_ok=True)
+        local_binary = os.path.join(bin_dir, binary_name)
+        if bin_dir not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH", "")
+        if os.path.exists(local_binary):
+            return
+
+    logger.info("No JS runtime found. Automatically downloading portable Deno for YouTube challenge solving...")
+    
+    # Determine the download URL based on OS and architecture
+    if is_windows:
+        url = "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip"
+    elif system == "darwin":
+        machine = platform.machine().lower()
+        if "arm" in machine or "aarch" in machine:
+            url = "https://github.com/denoland/deno/releases/latest/download/deno-aarch64-apple-darwin.zip"
+        else:
+            url = "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-apple-darwin.zip"
+    else:
+        machine = platform.machine().lower()
+        if "arm" in machine or "aarch" in machine:
+            url = "https://github.com/denoland/deno/releases/latest/download/deno-aarch64-unknown-linux-gnu.zip"
+        else:
+            url = "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip"
+            
+    zip_path = os.path.join(bin_dir, "deno.zip")
+    try:
+        logger.info(f"Downloading Deno from {url}...")
+        # Use a user agent to prevent download blocks
+        req = urllib.request.Request(
+            url, 
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        )
+        with urllib.request.urlopen(req) as response, open(zip_path, 'wb') as out_file:
+            out_file.write(response.read())
+            
+        logger.info("Extracting Deno...")
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(bin_dir)
+            
+        # Clean up ZIP file
+        if os.path.exists(zip_path):
+            os.remove(zip_path)
+            
+        # Set executable permission for Unix systems
+        if not is_windows and os.path.exists(local_binary):
+            os.chmod(local_binary, 0o755)
+            
+        logger.info("Deno JS runtime configured successfully.")
+    except Exception as e:
+        logger.error(f"Failed to auto-download Deno: {e}")
+
+# Run JS runtime check/download on module import
+ensure_js_runtime()
+
 def get_clean_title(title):
     # Keep only alphanumeric, spaces, and hyphens/underscores to avoid file path errors
     clean = re.sub(r'[^\w\s-]', '', title)
