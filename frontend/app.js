@@ -119,10 +119,14 @@ function App() {
         setVideoData(null);
 
         try {
+            const isVercelEnv = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
             const response = await fetch('/api/info', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: url.trim() })
+                body: JSON.stringify({ 
+                    url: url.trim(),
+                    is_vercel: isVercelEnv
+                })
             });
 
             if (!response.ok) {
@@ -156,12 +160,14 @@ function App() {
         setDownloadEta('-- giây');
 
         try {
+            const isVercelEnv = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
             const response = await fetch('/api/download', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     url: url.trim(),
-                    option_id: optionId
+                    option_id: optionId,
+                    is_vercel: isVercelEnv
                 })
             });
 
@@ -172,6 +178,37 @@ function App() {
                     if (data && data.detail) msg = data.detail;
                 } catch (e) {}
                 throw new Error(msg);
+            }
+
+            // Check if response is a file download (e.g. for Vercel serverless environment)
+            const contentType = response.headers.get('content-type');
+            if (contentType && !contentType.includes('application/json')) {
+                const blob = await response.blob();
+                const disposition = response.headers.get('content-disposition');
+                let finalFilename = 'video.mp4';
+                if (disposition && disposition.indexOf('attachment') !== -1) {
+                    const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                    const matches = filenameRegex.exec(disposition);
+                    if (matches != null && matches[1]) { 
+                        finalFilename = matches[1].replace(/['"]/g, '');
+                        finalFilename = decodeURIComponent(finalFilename);
+                    }
+                }
+                
+                setProgress(100);
+                setFilename(finalFilename);
+                setStatus('completed');
+                addToast('Tải video thành công!', 'success');
+
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = finalFilename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(blobUrl);
+                return;
             }
 
             const data = await response.json();

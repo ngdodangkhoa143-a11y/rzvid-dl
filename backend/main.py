@@ -70,10 +70,12 @@ tasks_lock = threading.Lock()
 
 class InfoRequest(BaseModel):
     url: str
+    is_vercel: bool = False
 
 class DownloadRequest(BaseModel):
     url: str
     option_id: str
+    is_vercel: bool = False
 
 def remove_file(filepath: str):
     """Safely removes a file from disk."""
@@ -185,6 +187,9 @@ def get_info(req: InfoRequest):
         logger.warning("Empty URL provided")
         raise HTTPException(status_code=400, detail="URL cannot be empty")
         
+    if req.is_vercel:
+        os.environ["VERCEL"] = "1"
+        
     result = get_video_info(req.url)
     if not result["success"]:
         err_msg = result.get("error", "Không thể lấy thông tin video. Vui lòng kiểm tra lại đường dẫn.")
@@ -195,8 +200,8 @@ def get_info(req: InfoRequest):
     return result
 
 @app.post("/api/download")
-def start_download(req: DownloadRequest):
-    """Starts the download process in the background and returns a task ID."""
+def start_download(req: DownloadRequest, background_tasks: BackgroundTasks):
+    """Starts the download process in the background on local, or returns the file directly on Vercel."""
     logger.info(f"Download request: URL={req.url}, Option={req.option_id}")
     cleanup_old_files()
     
@@ -204,6 +209,33 @@ def start_download(req: DownloadRequest):
         logger.warning("Missing url or option_id")
         raise HTTPException(status_code=400, detail="Missing required parameters")
         
+    is_vercel = req.is_vercel or bool(os.environ.get("VERCEL"))
+    if is_vercel:
+        os.environ["VERCEL"] = "1"
+        logger.info("Running synchronous download for Vercel serverless environment...")
+        res = download_media(req.url, req.option_id, DOWNLOADS_DIR)
+        if not res["success"]:
+            logger.error(f"Synchronous download failed: {res.get('error')}")
+            raise HTTPException(status_code=400, detail=res.get("error", "Lỗi tải video thất bại."))
+            
+        filepath = res["filepath"]
+        filename = res["filename"]
+        
+        # Schedule cleanup of the downloaded file after serving it
+        background_tasks.add_task(remove_file, filepath)
+        
+        import urllib.parse
+        encoded_filename = urllib.parse.quote(filename)
+        headers = {
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}",
+            "Access-Control-Expose-Headers": "Content-Disposition"
+        }
+        return FileResponse(
+            path=filepath,
+            media_type="application/octet-stream",
+            headers=headers
+        )
+
     task_id = str(uuid.uuid4())
     
     # Start download in a separate daemon thread

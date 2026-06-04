@@ -3,6 +3,9 @@ import re
 import uuid
 import yt_dlp
 import logging
+import time
+import shutil
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -286,6 +289,42 @@ def get_video_info(url: str):
             "error": str(e)
         }
 
+def safe_rename(src, dst, max_retries=5, delay=0.5):
+    """
+    Safely renames a file from src to dst.
+    On Windows, this handles PermissionError (WinError 32) by retrying with exponential backoff.
+    If all retries fail, falls back to copying the file and deleting the source.
+    """
+    for i in range(max_retries):
+        try:
+            if os.path.exists(dst):
+                try:
+                    os.remove(dst)
+                except Exception:
+                    pass
+            os.rename(src, dst)
+            logger.info(f"Successfully renamed {src} to {dst}")
+            return True
+        except PermissionError as e:
+            if i == max_retries - 1:
+                logger.error(f"Failed to rename {src} to {dst} after {max_retries} attempts: {e}")
+                # Fallback: copy + delete
+                try:
+                    logger.info(f"Attempting fallback copy + delete from {src} to {dst}")
+                    shutil.copy2(src, dst)
+                    try:
+                        os.remove(src)
+                    except Exception as re_err:
+                        logger.warning(f"Could not remove source file after copying: {re_err}")
+                    return True
+                except Exception as cp_err:
+                    logger.error(f"Fallback copy + delete failed: {cp_err}")
+                    raise e
+            logger.warning(f"PermissionError (file lock) renaming {src} to {dst}. Retrying in {delay}s...")
+            time.sleep(delay)
+            delay *= 1.5
+    return False
+
 def download_media(url: str, option_id: str, output_dir: str, progress_hook=None):
     """
     Downloads media from URL based on option_id and saves it in output_dir.
@@ -303,6 +342,7 @@ def download_media(url: str, option_id: str, output_dir: str, progress_hook=None
     
     # Generate a unique temp name to avoid conflicts, but keep the original title for the final file
     temp_id = str(uuid.uuid4())
+    clean_title = "Video"
     
     ydl_opts = get_ydl_opts({
         'outtmpl': os.path.join(output_dir, f'{temp_id}.%(ext)s'),
@@ -388,12 +428,17 @@ def download_media(url: str, option_id: str, output_dir: str, progress_hook=None
                     final_path = os.path.join(output_dir, final_filename)
                     counter += 1
                     
-                os.rename(downloaded_file, final_path)
-                return {
-                    "success": True,
-                    "filepath": final_path,
-                    "filename": final_filename
-                }
+                if safe_rename(downloaded_file, final_path):
+                    return {
+                        "success": True,
+                        "filepath": final_path,
+                        "filename": final_filename
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "error": "Could not rename downloaded file."
+                    }
             else:
                 return {
                     "success": False,
@@ -401,6 +446,70 @@ def download_media(url: str, option_id: str, output_dir: str, progress_hook=None
                 }
                 
     except Exception as e:
+        logger.warning(f"yt-dlp download failed with exception: {e}. Checking if we can salvage temp files...")
+        # Check if a completed file (e.g. temp.mp4) starting with temp_id exists
+        ext = "mp3" if is_audio else "mp4"
+        downloaded_file = None
+        
+        candidates = []
+        if os.path.exists(output_dir):
+            for filename in os.listdir(output_dir):
+                if filename.startswith(temp_id):
+                    filepath = os.path.join(output_dir, filename)
+                    if os.path.isfile(filepath):
+                        candidates.append(filepath)
+                        
+        # Sort candidates so that non-temp/non-part files are checked first, then temp files, then others
+        def sort_key(path):
+            name = os.path.basename(path).lower()
+            if name.endswith(f".{ext}"):
+                return 0
+            if ".temp" in name:
+                return 1
+            if ".part" not in name and ".ytdl" not in name:
+                return 2
+            return 3
+            
+        candidates.sort(key=sort_key)
+        
+        for cand in candidates:
+            # Check if it has content (size > 0)
+            if os.path.getsize(cand) > 0:
+                downloaded_file = cand
+                logger.info(f"Found salvageable download file: {downloaded_file}")
+                break
+                
+        if downloaded_file:
+            try:
+                # Rename the file to a user-friendly name while preserving extension
+                file_ext = os.path.splitext(downloaded_file)[1]
+                if file_ext == ".temp":
+                    file_ext = f".{ext}"
+                elif file_ext.endswith(".temp"):
+                    file_ext = file_ext[:-5]
+                    
+                if not file_ext:
+                    file_ext = f".{ext}"
+                    
+                final_filename = f"{clean_title}{file_ext}"
+                final_path = os.path.join(output_dir, final_filename)
+                
+                # If file exists, add a suffix
+                counter = 1
+                while os.path.exists(final_path):
+                    final_filename = f"{clean_title}_{counter}{file_ext}"
+                    final_path = os.path.join(output_dir, final_filename)
+                    counter += 1
+                    
+                if safe_rename(downloaded_file, final_path):
+                    return {
+                        "success": True,
+                        "filepath": final_path,
+                        "filename": final_filename
+                    }
+            except Exception as salvage_err:
+                logger.error(f"Failed to salvage file: {salvage_err}")
+                
         logger.error(f"Download error: {e}")
         return {
             "success": False,
