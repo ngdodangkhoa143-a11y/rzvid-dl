@@ -60,12 +60,7 @@ def get_ydl_opts(extra_opts=None):
                 logger.info(f"Using writable cookies file: {cookie_path}")
             break
 
-    # Optimize extractor args to rotate player clients and avoid simple bot flags
-    opts['extractor_args'] = {
-        'youtube': {
-            'player_client': ['ios', 'web', 'mweb', 'android']
-        }
-    }
+
 
     # Try using Chrome TLS impersonation via curl_cffi to bypass scraper blocklists
     try:
