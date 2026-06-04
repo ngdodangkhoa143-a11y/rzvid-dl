@@ -143,9 +143,9 @@ def get_ydl_opts(extra_opts=None, url=None):
         'fragment_retries': 5,
     }
 
-    # For YouTube: use iOS + mweb player clients to avoid bot detection without cookies.
-    # These clients are trusted by YouTube and don't require authentication for public videos.
-    if is_youtube:
+    # For YouTube: use iOS + mweb player clients ONLY on Vercel to avoid bot detection without cookies.
+    # Locally, we use default clients (web, android, ios, tv) to get all resolutions (up to 4K/8K).
+    if is_youtube and os.environ.get("VERCEL"):
         opts['extractor_args'] = {
             'youtube': {
                 'player_client': ['ios', 'mweb'],
