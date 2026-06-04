@@ -263,6 +263,87 @@ def debug_cookies():
             }
     return results
 
+@app.get("/api/test-clients")
+def test_clients():
+    import yt_dlp
+    from .downloader import get_ydl_opts
+    
+    url = "https://www.youtube.com/watch?v=D6rYPVIspLo"
+    client_test_cases = [
+        {"name": "ios_mweb", "player_client": ["ios", "mweb"]},
+        {"name": "android", "player_client": ["android"]},
+        {"name": "tv", "player_client": ["tv"]},
+        {"name": "web_embedded", "player_client": ["web_embedded"]},
+        {"name": "web_safari", "player_client": ["web_safari"]},
+        {"name": "default", "player_client": ["default"]},
+        {"name": "ios", "player_client": ["ios"]},
+        {"name": "mweb", "player_client": ["mweb"]},
+    ]
+    
+    results = {}
+    
+    # Test each client without cookies first, then with cookies
+    for case in client_test_cases:
+        name = case["name"]
+        player_client = case["player_client"]
+        
+        # Test 1: Without cookies
+        opts_no_cookies = {
+            'quiet': True,
+            'no_warnings': True,
+            'socket_timeout': 10,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': player_client,
+                    'player_skip': ['webpage', 'configs'],
+                }
+            }
+        }
+        
+        try:
+            with yt_dlp.YoutubeDL(opts_no_cookies) as ydl:
+                info = ydl.extract_info(url, download=False)
+                results[f"{name}_no_cookies"] = {
+                    "success": True,
+                    "title": info.get("title"),
+                    "formats_count": len(info.get("formats", []))
+                }
+        except Exception as e:
+            results[f"{name}_no_cookies"] = {
+                "success": False,
+                "error": str(e)[:300]
+            }
+            
+        # Test 2: With cookies (if available)
+        base_opts = get_ydl_opts(url=url)
+        opts_with_cookies = base_opts.copy()
+        opts_with_cookies.update({
+            'socket_timeout': 10,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': player_client,
+                    'player_skip': ['webpage', 'configs'],
+                }
+            }
+        })
+        
+        try:
+            with yt_dlp.YoutubeDL(opts_with_cookies) as ydl:
+                info = ydl.extract_info(url, download=False)
+                results[f"{name}_with_cookies"] = {
+                    "success": True,
+                    "title": info.get("title"),
+                    "formats_count": len(info.get("formats", []))
+                }
+        except Exception as e:
+            results[f"{name}_with_cookies"] = {
+                "success": False,
+                "error": str(e)[:300]
+            }
+            
+    return results
+
+
 
 @app.get("/api/retrieve/{task_id}")
 def retrieve_file(task_id: str):
