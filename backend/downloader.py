@@ -35,14 +35,19 @@ def ensure_js_runtime():
             logger.info(f"Found global JS runtime: {runtime}")
             return
             
-    # 2. Check the local bin directory
-    bin_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "bin"))
-    os.makedirs(bin_dir, exist_ok=True)
-    
+    # 2. Set up bin directory based on environment (Vercel vs Local)
     system = platform.system().lower()
     is_windows = system == "windows"
-    
     binary_name = "deno.exe" if is_windows else "deno"
+    
+    if os.environ.get("VERCEL"):
+        # On Vercel, the app directory is read-only. We must use /tmp/bin.
+        bin_dir = "/tmp/bin"
+    else:
+        # Locally, we use backend/bin so it persists across runs.
+        bin_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "bin"))
+        
+    os.makedirs(bin_dir, exist_ok=True)
     local_binary = os.path.join(bin_dir, binary_name)
     
     # Add local bin to PATH early so subsequent checks find it
@@ -52,18 +57,6 @@ def ensure_js_runtime():
     if os.path.exists(local_binary):
         logger.info(f"Found local JS runtime at: {local_binary}")
         return
-
-    # On Vercel, check if we need to redirect to writable /tmp
-    if os.environ.get("VERCEL"):
-        # Vercel should have Node.js globally, so we shouldn't hit this.
-        # But if we do, use /tmp since the filesystem is read-only.
-        bin_dir = "/tmp/bin"
-        os.makedirs(bin_dir, exist_ok=True)
-        local_binary = os.path.join(bin_dir, binary_name)
-        if bin_dir not in os.environ.get("PATH", ""):
-            os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH", "")
-        if os.path.exists(local_binary):
-            return
 
     logger.info("No JS runtime found. Automatically downloading portable Deno for YouTube challenge solving...")
     
