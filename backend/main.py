@@ -269,76 +269,62 @@ def test_clients():
     from .downloader import get_ydl_opts
     
     url = "https://www.youtube.com/watch?v=D6rYPVIspLo"
-    client_test_cases = [
-        {"name": "ios_mweb", "player_client": ["ios", "mweb"]},
-        {"name": "android", "player_client": ["android"]},
-        {"name": "tv", "player_client": ["tv"]},
-        {"name": "web_embedded", "player_client": ["web_embedded"]},
-        {"name": "web_safari", "player_client": ["web_safari"]},
-        {"name": "default", "player_client": ["default"]},
-        {"name": "ios", "player_client": ["ios"]},
-        {"name": "mweb", "player_client": ["mweb"]},
-    ]
     
+    class CaptureLogger:
+        def __init__(self):
+            self.logs = []
+        def debug(self, msg):
+            self.logs.append(f"[DEBUG] {msg}")
+        def info(self, msg):
+            self.logs.append(f"[INFO] {msg}")
+        def warning(self, msg):
+            self.logs.append(f"[WARNING] {msg}")
+        def error(self, msg):
+            self.logs.append(f"[ERROR] {msg}")
+            
     results = {}
     
-    # Test each client without cookies first, then with cookies
-    for case in client_test_cases:
+    # Test cases to run with full logging
+    test_cases = [
+        {"name": "ios_with_cookies", "use_cookies": True, "client": ["ios"]},
+        {"name": "ios_no_cookies", "use_cookies": False, "client": ["ios"]},
+    ]
+    
+    for case in test_cases:
+        logger_instance = CaptureLogger()
         name = case["name"]
-        player_client = case["player_client"]
         
-        # Test 1: Without cookies
-        opts_no_cookies = {
-            'quiet': True,
-            'no_warnings': True,
+        opts = {
+            'verbose': True,
+            'logger': logger_instance,
             'socket_timeout': 10,
             'extractor_args': {
                 'youtube': {
-                    'player_client': player_client,
+                    'player_client': case["client"],
                     'player_skip': ['webpage', 'configs'],
                 }
             }
         }
         
-        try:
-            with yt_dlp.YoutubeDL(opts_no_cookies) as ydl:
-                info = ydl.extract_info(url, download=False)
-                results[f"{name}_no_cookies"] = {
-                    "success": True,
-                    "title": info.get("title"),
-                    "formats_count": len(info.get("formats", []))
-                }
-        except Exception as e:
-            results[f"{name}_no_cookies"] = {
-                "success": False,
-                "error": str(e)[:300]
-            }
+        if case["use_cookies"]:
+            base_opts = get_ydl_opts(url=url)
+            opts.update({
+                'cookiefile': base_opts.get('cookiefile')
+            })
             
-        # Test 2: With cookies (if available)
-        base_opts = get_ydl_opts(url=url)
-        opts_with_cookies = base_opts.copy()
-        opts_with_cookies.update({
-            'socket_timeout': 10,
-            'extractor_args': {
-                'youtube': {
-                    'player_client': player_client,
-                    'player_skip': ['webpage', 'configs'],
-                }
-            }
-        })
-        
         try:
-            with yt_dlp.YoutubeDL(opts_with_cookies) as ydl:
+            with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=False)
-                results[f"{name}_with_cookies"] = {
+                results[name] = {
                     "success": True,
                     "title": info.get("title"),
-                    "formats_count": len(info.get("formats", []))
+                    "logs": logger_instance.logs
                 }
         except Exception as e:
-            results[f"{name}_with_cookies"] = {
+            results[name] = {
                 "success": False,
-                "error": str(e)[:300]
+                "error": str(e),
+                "logs": logger_instance.logs
             }
             
     return results
