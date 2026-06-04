@@ -2,20 +2,29 @@ import os
 import re
 import uuid
 import yt_dlp
-import static_ffmpeg
 import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize static-ffmpeg to ensure ffmpeg is in PATH
-try:
-    logger.info("Initializing static-ffmpeg...")
-    static_ffmpeg.add_paths()
-    logger.info("static-ffmpeg initialized successfully.")
-except Exception as e:
-    logger.error(f"Error initializing static-ffmpeg: {e}")
+def _init_ffmpeg():
+    """Initialize static-ffmpeg, redirecting cache to /tmp on Vercel."""
+    try:
+        import static_ffmpeg
+        # On Vercel the home dir is read-only; redirect to /tmp so static_ffmpeg can write its cache
+        if os.environ.get("VERCEL"):
+            os.environ.setdefault("HOME", "/tmp")
+        logger.info("Initializing static-ffmpeg...")
+        static_ffmpeg.add_paths()
+        logger.info("static-ffmpeg initialized successfully.")
+    except Exception as e:
+        logger.error(f"Error initializing static-ffmpeg: {e}")
+
+# Only auto-init locally (fast startup). On Vercel, called lazily before downloads.
+if not os.environ.get("VERCEL"):
+    _init_ffmpeg()
+
 
 def ensure_js_runtime():
     """
@@ -282,7 +291,10 @@ def download_media(url: str, option_id: str, output_dir: str, progress_hook=None
     """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-        
+
+    # Ensure ffmpeg is initialized (lazy on Vercel)
+    _init_ffmpeg()
+
     # Parse option_id
     # option_id can be "video_1080", "video_720", "video_best", "audio_mp3"
     is_audio = option_id.startswith("audio_")
