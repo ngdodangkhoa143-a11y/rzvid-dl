@@ -19,5 +19,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["backend"]
 
+[tool.setuptools.package-data]
+backend = ["cookies.txt"]
+
+
 [tool.vercel]
 entrypoint = "backend.main:app"

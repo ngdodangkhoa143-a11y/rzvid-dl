@@ -158,8 +158,10 @@ def get_ydl_opts(extra_opts=None, url=None):
         os.path.join(os.path.dirname(__file__), "cookies.txt"),
         os.path.join(os.path.dirname(__file__), "..", "cookies.txt"),
     ]
+    cookies_found = False
     for cookie_path in possible_cookie_files:
         if os.path.exists(cookie_path):
+            cookies_found = True
             # On Vercel/read-only environments, copy cookies to /tmp first
             if os.environ.get("VERCEL") or not os.access(cookie_path, os.W_OK):
                 import shutil
@@ -174,6 +176,10 @@ def get_ydl_opts(extra_opts=None, url=None):
                 opts['cookiefile'] = os.path.abspath(cookie_path)
                 logger.info(f"Using cookies from: {cookie_path}")
             break
+
+    if not cookies_found:
+        logger.warning(f"No cookies file found in checked paths: {possible_cookie_files}")
+
 
     if extra_opts:
         opts.update(extra_opts)
