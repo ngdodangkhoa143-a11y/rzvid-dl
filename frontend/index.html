@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RzVid - Tải Video & Audio Chuyên Nghiệp | SaaS Downloader</title>
+    <meta name="description" content="Ứng dụng tải video và audio chất lượng cao từ TikTok, YouTube, Facebook, Instagram không dính logo watermark hoàn toàn miễn phí.">
+    
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    fontSize: {
+                        '2xs': '0.625rem',
+                        '3xs': '0.5rem',
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Import Map for React + Framer Motion + Lucide Icons -->
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18.2.0",
+          "react-dom": "https://esm.sh/react-dom@18.2.0",
+          "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+          "framer-motion": "https://esm.sh/framer-motion@10.16.4?deps=react@18.2.0,react-dom@18.2.0",
+          "lucide-react": "https://esm.sh/lucide-react@0.292.0"
+        }
+      }
+    </script>
+    
+    <!-- Babel Standalone for in-browser JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="text-slate-200 min-h-screen bg-grid-pattern relative overflow-x-hidden">
+
+    <!-- Three.js canvas container for 3D background -->
+    <canvas id="three-canvas" class="fixed inset-0 w-full h-full -z-20 pointer-events-none opacity-50"></canvas>
+
+    <!-- Ambient cinematic background spotlight glow effects -->
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1400px] h-[600px] bg-gradient-to-b from-indigo-500/5 via-violet-500/2 to-transparent blur-[140px] pointer-events-none -z-10"></div>
+    <div class="absolute bottom-0 right-0 w-[500px] h-[500px] bg-indigo-500/2 blur-[160px] pointer-events-none -z-10"></div>
+
+    <!-- React App Root Container -->
+    <div id="root"></div>
+
+    <!-- Background 3D Script & React App Module -->
+    <script src="three-bg.js"></script>
+    <script type="text/babel" data-type="module" src="app.js"></script>
+</body>
+</html>

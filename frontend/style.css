@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+/* Apply custom font globally to Tailwind's sans-serif class */
+@layer base {
+  html {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    scroll-behavior: smooth;
+    background-color: #020204; /* True Cinematic Obsidian black */
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020204;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #111827; /* Gray 900 */
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #1f2937; /* Gray 800 */
+}
+
+/* Ultra-subtle Grid background pattern for modern SaaS aesthetic */
+.bg-grid-pattern {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.005) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.005) 1px, transparent 1px);
+}
+
+/* Glassmorphism panel helpers */
+.glass-panel {
+  background: rgba(8, 8, 12, 0.55);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.02);
+}
+
+.glass-input {
+  background: rgba(3, 3, 5, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.glass-input:focus-within {
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 0 0 25px rgba(99, 102, 241, 0.06), inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Cinematic backlight glows */
+.cinematic-glow {
+  box-shadow: 0 0 50px rgba(99, 102, 241, 0.05), 0 0 120px rgba(139, 92, 246, 0.03);
+}
+
+.cinematic-glow-green {
+  box-shadow: 0 0 50px rgba(16, 185, 129, 0.06), 0 0 120px rgba(16, 185, 129, 0.02);
+}
+
+.cinematic-glow-red {
+  box-shadow: 0 0 50px rgba(239, 68, 68, 0.06), 0 0 120px rgba(239, 68, 68, 0.02);
+}

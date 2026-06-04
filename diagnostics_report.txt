@@ -1,0 +1,67 @@
+===================================================
+             RzVid DIAGNOSTICS REPORT              
+===================================================
+
+--- 1. ENVIRONMENT DETAILS ---
+Python Version: 3.14.0 (tags/v3.14.0:ebf955d, Oct  7 2025, 10:15:03) [MSC v.1944 64 bit (AMD64)]
+Platform: win32
+Current Directory: C:\Users\Admin\Downloads\RzVid
+Executable: C:\Users\Admin\Downloads\RzVid\.venv\Scripts\python.exe
+
+--- 2. IMPORTING LIBRARIES ---
+  [OK] fastapi imported successfully.
+  [OK] uvicorn imported successfully.
+  [OK] yt_dlp imported successfully.
+  [OK] static_ffmpeg imported successfully.
+  [OK] aiofiles imported successfully.
+  [OK] curl_cffi imported successfully.
+  [OK] yt_dlp_ejs imported successfully.
+
+--- 3. FFMPEG BINARY TEST ---
+  Initializing static-ffmpeg...
+  static-ffmpeg paths added to PATH.
+  [OK] FFmpeg works! Version info: ffmpeg version 8.0.1-essentials_build-www.gyan.dev Copyright (c) 2000-2025 the FFmpeg developers
+
+--- 4. NETWORK CONNECTIVITY ---
+  [OK] Successfully connected to Google (Status: 200)
+  [OK] Successfully connected to YouTube (Status: 200)
+  [OK] Successfully connected to TikTok (Status: 200)
+
+--- 5. YT-DLP EXTRACTION TESTS ---
+  Testing YouTube extraction on: https://www.youtube.com/watch?v=jNQXAC9IVRw
+    [OK] YouTube extractor succeeded. Video title: 'Me at the zoo'
+  Testing TikTok extraction on: https://www.tiktok.com/@tiktok/video/7106194347530603822
+    [FAIL] TikTok extractor failed: ERROR: [TikTok] 7106194347530603822: Your IP address is blocked from accessing this post
+Traceback (most recent call last):
+  File "C:\Users\Admin\Downloads\RzVid\.venv\Lib\site-packages\yt_dlp\YoutubeDL.py", line 1698, in wrapper
+    return func(self, *args, **kwargs)
+  File "C:\Users\Admin\Downloads\RzVid\.venv\Lib\site-packages\yt_dlp\YoutubeDL.py", line 1833, in __extract_info
+    ie_result = ie.extract(url)
+  File "C:\Users\Admin\Downloads\RzVid\.venv\Lib\site-packages\yt_dlp\extractor\common.py", line 765, in extract
+    ie_result = self._real_extract(url)
+  File "C:\Users\Admin\Downloads\RzVid\.venv\Lib\site-packages\yt_dlp\extractor\tiktok.py", line 994, in _real_extract
+    raise ExtractorError('Your IP address is blocked from accessing this post', expected=True)
+yt_dlp.utils.ExtractorError: [TikTok] 7106194347530603822: Your IP address is blocked from accessing this post
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Admin\Downloads\RzVid\diagnose.py", line 106, in <module>
+    info = ydl.extract_info(tiktok_url, download=False)
+  File "C:\Users\Admin\Downloads\RzVid\.venv\Lib\site-packages\yt_dlp\YoutubeDL.py", line 1687, in extract_info
+    return self.__extract_info(url, self.get_info_extractor(key), download, extra_info, process)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Downloads\RzVid\.venv\Lib\site-packages\yt_dlp\YoutubeDL.py", line 1716, in wrapper
+    self.report_error(str(e), e.format_traceback())
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Downloads\RzVid\.venv\Lib\site-packages\yt_dlp\YoutubeDL.py", line 1154, in report_error
+    self.trouble(f'{self._format_err("ERROR:", self.Styles.ERROR)} {message}', *args, **kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\Downloads\RzVid\.venv\Lib\site-packages\yt_dlp\YoutubeDL.py", line 1093, in trouble
+    raise DownloadError(message, exc_info)
+yt_dlp.utils.DownloadError: ERROR: [TikTok] 7106194347530603822: Your IP address is blocked from accessing this post
+
+
+===================================================
+              DIAGNOSTICS COMPLETED                
+===================================================
