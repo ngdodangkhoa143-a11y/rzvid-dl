@@ -53,6 +53,48 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Anti-F12 and Source Protection -->
+    <script>
+        // Disable Right-Click context menu
+        document.addEventListener('contextmenu', e => e.preventDefault());
+
+        // Disable developer tool keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.keyCode === 123) { // F12
+                e.preventDefault();
+                return false;
+            }
+            if (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) { // Ctrl+Shift+I/J/C
+                e.preventDefault();
+                return false;
+            }
+            if (e.ctrlKey && e.keyCode === 85) { // Ctrl+U (View Source)
+                e.preventDefault();
+                return false;
+            }
+            if (e.ctrlKey && e.keyCode === 83) { // Ctrl+S (Save Page)
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // Anti-debugging loop: instantly freezes execution if DevTools is opened
+        setInterval(function() {
+            (function() {
+                try {
+                    (function a(i) {
+                        if (("" + i / i).length !== 1 || i % 20 === 0) {
+                            (function() {}).constructor("debugger")();
+                        } else {
+                            debugger;
+                        }
+                        a(++i);
+                    })(0);
+                } catch (e) {}
+            })();
+        }, 200);
+    </script>
 </head>
 <body class="text-slate-200 min-h-screen bg-grid-pattern relative overflow-x-hidden">
 
