@@ -103,19 +103,28 @@ def ensure_js_runtime():
     except Exception as e:
         logger.error(f"Failed to auto-download Deno: {e}")
 
-# Run JS runtime check/download on module import
-ensure_js_runtime()
+# JS runtime check/download will be run lazily in get_ydl_opts()
 
 def get_clean_title(title):
     # Keep only alphanumeric, spaces, and hyphens/underscores to avoid file path errors
     clean = re.sub(r'[^\w\s-]', '', title)
     return re.sub(r'[-\s]+', '_', clean).strip().strip('_')
 
-def get_ydl_opts(extra_opts=None):
+def get_ydl_opts(extra_opts=None, url=None):
     """
     Builds a robust configuration for yt-dlp, applying connection timeouts,
     limited retries, and browser TLS impersonation to prevent bot blocking.
     """
+    # Lazily ensure JS runtime is configured for YouTube or local environments
+    is_youtube = False
+    if url:
+        url_lower = url.lower()
+        if "youtube.com" in url_lower or "youtu.be" in url_lower:
+            is_youtube = True
+            
+    if not os.environ.get("VERCEL") or is_youtube:
+        ensure_js_runtime()
+        
     opts = {
         'quiet': True,
         'no_warnings': True,
@@ -170,7 +179,7 @@ def get_video_info(url: str):
     """
     Extracts metadata and available download resolutions from the given URL.
     """
-    ydl_opts = get_ydl_opts({'extract_flat': False})
+    ydl_opts = get_ydl_opts({'extract_flat': False}, url=url)
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -283,7 +292,7 @@ def download_media(url: str, option_id: str, output_dir: str, progress_hook=None
     
     ydl_opts = get_ydl_opts({
         'outtmpl': os.path.join(output_dir, f'{temp_id}.%(ext)s'),
-    })
+    }, url=url)
     
     if progress_hook:
         ydl_opts['progress_hooks'] = [progress_hook]
@@ -319,7 +328,7 @@ def download_media(url: str, option_id: str, output_dir: str, progress_hook=None
             
     try:
         # Get title first to name the final file nicely
-        info_opts = get_ydl_opts()
+        info_opts = get_ydl_opts(url=url)
         with yt_dlp.YoutubeDL(info_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             title = info.get('title', 'Video')
